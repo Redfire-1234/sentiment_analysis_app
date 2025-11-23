@@ -1,95 +1,61 @@
-from flask import Flask, request, jsonify
+import streamlit as st
 import pickle
 import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 import nltk
-import os
 
-app = Flask(__name__)
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
-# Download NLTK data
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
+st.title("Sentiment Analysis for Goboult & Flipflop")
 
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', quiet=True)
+# Input from user
+dataset = st.selectbox("Select Dataset", ["Goboult", "Flipflop"])
+review = st.text_area("Enter your review here:")
 
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet', quiet=True)
+# Load models and TF-IDF vectorizers
+@st.cache_resource(show_spinner=False)
+def load_models():
+    with open('rf_goboult_model.pkl', 'rb') as f:
+        goboult_model = pickle.load(f)
+    with open('tfidf_goboult.pkl', 'rb') as f:
+        goboult_tfidf = pickle.load(f)
 
-# Load models
-with open('rf_goboult_model.pkl', 'rb') as f:
-    goboult_model = pickle.load(f)
-with open('tfidf_goboult.pkl', 'rb') as f:
-    goboult_tfidf = pickle.load(f)
+    with open('rf_flipflop_model.pkl', 'rb') as f:
+        flipflop_model = pickle.load(f)
+    with open('tfidf_flipflop.pkl', 'rb') as f:
+        flipflop_tfidf = pickle.load(f)
+    
+    stop_words = set(stopwords.words('english'))
+    lemmatizer = WordNetLemmatizer()
+    
+    return goboult_model, goboult_tfidf, flipflop_model, flipflop_tfidf, stop_words, lemmatizer
 
-with open('rf_flipflop_model.pkl', 'rb') as f:
-    flipflop_model = pickle.load(f)
-with open('tfidf_flipflop.pkl', 'rb') as f:
-    flipflop_tfidf = pickle.load(f)
+goboult_model, goboult_tfidf, flipflop_model, flipflop_tfidf, stop_words, lemmatizer = load_models()
 
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
-
+# Text preprocessing
 def preprocess_text(text):
-    if not text:
-        return ""
     text = text.lower()
     text = text.translate(str.maketrans('', '', string.punctuation))
     tokens = word_tokenize(text)
     tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
     return " ".join(tokens)
 
-@app.route('/')
-def home():
-    return jsonify({
-        'status': 'running',
-        'message': 'Sentiment Analysis API for Goboult & Flipflop is running!',
-        'endpoints': {
-            '/': 'Health check',
-            '/predict': 'POST - Predict sentiment'
-        }
-    })
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    try:
-        data = request.json
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-            
-        review = data.get('review', '').strip()
-        if not review:
-            return jsonify({'error': 'Review text is required'}), 400
-            
-        dataset = data.get('dataset', 'goboult').lower()
+# Prediction
+if st.button("Predict Sentiment"):
+    if review.strip() == "":
+        st.warning("Please enter a review!")
+    else:
         cleaned = preprocess_text(review)
-        
-        if not cleaned:
-            return jsonify({'error': 'Review text is too short'}), 400
-
-        if dataset == 'goboult':
+        if dataset.lower() == "goboult":
             vectorized = goboult_tfidf.transform([cleaned])
             pred = goboult_model.predict(vectorized)[0]
-        elif dataset == 'flipflop':
+        else:
             vectorized = flipflop_tfidf.transform([cleaned])
             pred = flipflop_model.predict(vectorized)[0]
-        else:
-            return jsonify({'error': 'Dataset must be "goboult" or "flipflop"'}), 400
+        st.success(f"Predicted Sentiment: {pred}")
 
-        return jsonify({'review': review, 'dataset': dataset, 'predicted_sentiment': pred})
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)

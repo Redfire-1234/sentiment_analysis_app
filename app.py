@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 import pickle
 import string
@@ -26,11 +25,6 @@ try:
     nltk.data.find('corpora/wordnet')
 except LookupError:
     nltk.download('wordnet', quiet=True)
-
-try:
-    nltk.data.find('tokenizers/punkt_tab')
-except LookupError:
-    nltk.download('punkt_tab', quiet=True)
 
 # Load Goboult model & TF-IDF
 with open('rf_goboult_model.pkl', 'rb') as f:

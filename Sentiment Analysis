@@ -1,0 +1,568 @@
+
+# import re
+# import pandas as pd
+
+# # Read the reviews from a text file (replace 'myntra_reviews.txt' with your filename)
+# with open('/content/flipflop rating 1.txt', 'r', encoding='utf-8') as file:
+#     raw_text = file.read()
+
+# # Regex pattern to extract Name, Date, Star Rating, and Review
+# # Assumes the format: Name + Date + Some number (optional) + Star rating + Review
+# pattern = re.compile(
+#     r"([A-Za-z\s]+?)"          # Name (letters and spaces)
+#     r"(\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept|Oct|Nov|Dec)\s\d{4})"  # Date
+#     r"\s*(\d{1,3})?\s*"        # Optional number (like review count)
+#     r"(\d)\s*"                  # Star rating (1-5)
+#     r"([\s\S]*?)(?=(?:[A-Za-z\s]+?\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept|Oct|Nov|Dec)\s\d{4})|$)"
+#     # Review text until the next Name + Date or end of text
+# )
+
+# matches = pattern.findall(raw_text)
+
+# # Prepare lists for DataFrame
+# names, dates, ratings, reviews = [], [], [], []
+
+# for match in matches:
+#     name = match[0].strip()
+#     date = match[1].strip()
+#     rating = int(match[3])
+#     review = match[4].strip().replace("\n", " ")  # replace line breaks with space
+
+#     names.append(name)
+#     dates.append(date)
+#     ratings.append(rating)
+#     reviews.append(review)
+
+# # Create DataFrame
+# df_full = pd.DataFrame({
+#     "Name": names,
+#     "Date": dates,
+#     "Star Rating": ratings,
+#     "Review": reviews
+# })
+
+# # Save to CSV
+# file_path = '/content/flipflop rating 1.csv'
+# df_full.to_csv(file_path, index=False, encoding='utf-8')
+
+# print(f"CSV file created: {file_path}")
+
+
+import pandas as pd
+
+# Load the first CSV file
+goboult_df = pd.read_csv('/content/goboult_shadow_review.csv')
+print("Goboult Shadow Reviews:")
+print(goboult_df.head())  # Display first 5 rows
+
+# Load the second CSV file
+flipflop_df = pd.read_csv('/content/flipflop_review.csv')
+print("\nFlipflop Reviews:")
+print(flipflop_df.head())  # Display first 5 rows
+
+
+# Load the CSV files
+goboult_df = pd.read_csv('/content/goboult_shadow_review.csv')
+flipflop_df = pd.read_csv('/content/flipflop_review.csv')
+
+# Display number of rows
+print("Number of rows in Goboult Shadow Reviews:", goboult_df.shape[0])
+print("Number of rows in Flipflop Reviews:", flipflop_df.shape[0])
+
+import pandas as pd
+
+# Load the CSV files
+goboult_df = pd.read_csv('/content/goboult_shadow_review.csv')
+flipflop_df = pd.read_csv('/content/flipflop_review.csv')
+
+# Goboult Data 
+# Drop duplicate rows
+goboult_df = goboult_df.drop_duplicates()
+
+# Fill missing values 
+if 'star rating' in goboult_df.columns:
+    goboult_df['star rating'] = goboult_df['star rating'].fillna(0)
+
+print("Goboult data after cleaning:")
+print(goboult_df.info())
+
+
+# Flipflop Data
+flipflop_df = flipflop_df.drop_duplicates()
+if 'star rating' in flipflop_df.columns:
+    flipflop_df['star rating'] = flipflop_df['star rating'].fillna(0)
+
+print("\nFlipflop data after cleaning:")
+print(flipflop_df.info())
+
+# Function to assign sentiment
+def assign_sentiment(rating):
+    if rating >= 4:
+        return "Positive"
+    elif rating <= 2:
+        return "Negative"
+    else:
+        return None  # Neutral, will exclude
+
+# Apply sentiment to Goboult
+goboult_df['Sentiment'] = goboult_df['Star Rating'].apply(assign_sentiment)
+goboult_sentiment = goboult_df.dropna(subset=['Sentiment']).copy()
+
+# Apply sentiment to Flipflop
+flipflop_df['Sentiment'] = flipflop_df['Star Rating'].apply(assign_sentiment)
+flipflop_sentiment = flipflop_df.dropna(subset=['Sentiment']).copy()
+
+# Check counts
+print(f"Goboult reviews after sentiment filtering: {len(goboult_sentiment)}")
+print(f"Flipflop reviews after sentiment filtering: {len(flipflop_sentiment)}")
+
+!rm -rf /root/nltk_data/tokenizers/punkt
+
+!pip install --upgrade nltk
+
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import string
+
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('punkt_tab')
+
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+# Preprocessing function
+def preprocess_text(text):
+    if pd.isnull(text):
+        return ""
+    # Lowercase
+    text = text.lower()
+    # Remove punctuation
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    # Tokenization
+    tokens = word_tokenize(text)
+    # Remove stopwords and lemmatize
+    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
+    # Join back to string
+    return " ".join(tokens)
+
+# Apply preprocessing
+goboult_sentiment['cleaned_review'] = goboult_sentiment['Review'].apply(preprocess_text)
+flipflop_sentiment['cleaned_review'] = flipflop_sentiment['Review'].apply(preprocess_text)
+
+# Display first few cleaned reviews
+print(goboult_sentiment[['Review', 'cleaned_review']].head())
+print(flipflop_sentiment[['Review', 'cleaned_review']].head())
+
+mean_rating_g = goboult_sentiment['Star Rating'].mean()
+median_rating_g = goboult_sentiment['Star Rating'].median()
+print(f"Goboult - Mean Rating: {mean_rating_g:.2f}")
+print(f"Goboult - Median Rating: {median_rating_g:.2f}")
+
+sentiment_counts_g = goboult_sentiment['Sentiment'].value_counts()
+print("Goboult - Review Count by Sentiment:")
+print(sentiment_counts_g)
+
+goboult_sentiment['Review_Word_Count'] = goboult_sentiment['cleaned_review'].apply(lambda x: len(x.split()))
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10,5))
+sns.histplot(goboult_sentiment['Review_Word_Count'], bins=30, kde=True)
+plt.title("Goboult - Distribution of Review Word Count")
+plt.xlabel("Number of Words")
+plt.ylabel("Count of Reviews")
+plt.show()
+
+goboult_sentiment['Date'] = pd.to_datetime(goboult_sentiment['Date'], errors='coerce')
+goboult_sentiment['YearMonth'] = goboult_sentiment['Date'].dt.to_period('M')
+
+monthly_sentiment_g = goboult_sentiment.groupby(['YearMonth', 'Sentiment']).size().unstack().fillna(0)
+monthly_sentiment_g.plot(kind='line', figsize=(12,6), marker='o')
+plt.title("Goboult - Monthly Sentiment Trend")
+plt.xlabel("Month-Year")
+plt.ylabel("Number of Reviews")
+plt.show()
+
+mean_rating_f = flipflop_sentiment['Star Rating'].mean()
+median_rating_f = flipflop_sentiment['Star Rating'].median()
+print(f"Flipflop - Mean Rating: {mean_rating_f:.2f}")
+print(f"Flipflop - Median Rating: {median_rating_f:.2f}")
+
+sentiment_counts_f = flipflop_sentiment['Sentiment'].value_counts()
+print("Flipflop - Review Count by Sentiment:")
+print(sentiment_counts_f)
+
+flipflop_sentiment['Review_Word_Count'] = flipflop_sentiment['cleaned_review'].apply(lambda x: len(x.split()))
+
+
+plt.figure(figsize=(10,5))
+sns.histplot(flipflop_sentiment['Review_Word_Count'], bins=30, kde=True)
+plt.title("Flipflop - Distribution of Review Word Count")
+plt.xlabel("Number of Words")
+plt.ylabel("Count of Reviews")
+plt.show()
+
+flipflop_sentiment['Date'] = pd.to_datetime(flipflop_sentiment['Date'], errors='coerce')
+flipflop_sentiment['YearMonth'] = flipflop_sentiment['Date'].dt.to_period('M')
+
+monthly_sentiment_f = flipflop_sentiment.groupby(['YearMonth', 'Sentiment']).size().unstack().fillna(0)
+monthly_sentiment_f.plot(kind='line', figsize=(12,6), marker='o')
+plt.title("Flipflop - Monthly Sentiment Trend")
+plt.xlabel("Month-Year")
+plt.ylabel("Number of Reviews")
+plt.show()
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from wordcloud import WordCloud
+from collections import Counter
+
+# Histogram
+plt.figure(figsize=(8,4))
+sns.countplot(x='Sentiment', data=goboult_sentiment, palette='coolwarm')
+plt.title("Goboult - Sentiment Distribution")
+plt.show()
+
+# Pie Chart
+plt.figure(figsize=(6,6))
+goboult_sentiment['Sentiment'].value_counts().plot.pie(autopct='%1.1f%%', colors=['#5cb85c','#d9534f'])
+plt.title("Goboult - Sentiment Percentage")
+plt.ylabel('')
+plt.show()
+
+goboult_sentiment['YearMonth'] = goboult_sentiment['Date'].dt.to_period('M')
+monthly_sentiment_g = goboult_sentiment.groupby(['YearMonth', 'Sentiment']).size().unstack().fillna(0)
+
+monthly_sentiment_g.plot(kind='line', figsize=(12,5), marker='o')
+plt.title("Goboult - Monthly Sentiment Trend")
+plt.xlabel("Month-Year")
+plt.ylabel("Number of Reviews")
+plt.show()
+
+all_text_g = ' '.join(goboult_sentiment['cleaned_review'])
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_text_g)
+
+plt.figure(figsize=(12,6))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title("Goboult - Most Common Words in Reviews")
+plt.show()
+
+negative_text_g = ' '.join(goboult_sentiment[goboult_sentiment['Sentiment']=='Negative']['cleaned_review'])
+top_words_g = Counter(negative_text_g.split()).most_common(10)
+
+words, counts = zip(*top_words_g)
+plt.figure(figsize=(10,5))
+sns.barplot(x=list(counts), y=list(words), palette='Reds_r')
+plt.title("Goboult - Top Pain Points in Negative Reviews")
+plt.xlabel("Frequency")
+plt.ylabel("Issue / Word")
+plt.show()
+
+
+plt.figure(figsize=(8,4))
+sns.countplot(x='Sentiment', data=flipflop_sentiment, palette='coolwarm')
+plt.title("Flipflop - Sentiment Distribution")
+plt.show()
+
+plt.figure(figsize=(6,6))
+flipflop_sentiment['Sentiment'].value_counts().plot.pie(autopct='%1.1f%%', colors=['#5cb85c','#d9534f'])
+plt.title("Flipflop - Sentiment Percentage")
+plt.ylabel('')
+plt.show()
+
+flipflop_sentiment['YearMonth'] = flipflop_sentiment['Date'].dt.to_period('M')
+monthly_sentiment_f = flipflop_sentiment.groupby(['YearMonth', 'Sentiment']).size().unstack().fillna(0)
+
+monthly_sentiment_f.plot(kind='line', figsize=(12,5), marker='o')
+plt.title("Flipflop - Monthly Sentiment Trend")
+plt.xlabel("Month-Year")
+plt.ylabel("Number of Reviews")
+plt.show()
+
+all_text_f = ' '.join(flipflop_sentiment['cleaned_review'])
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_text_f)
+
+plt.figure(figsize=(12,6))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title("Flipflop - Most Common Words in Reviews")
+plt.show()
+
+negative_text_f = ' '.join(flipflop_sentiment[flipflop_sentiment['Sentiment']=='Negative']['cleaned_review'])
+top_words_f = Counter(negative_text_f.split()).most_common(10)
+
+words, counts = zip(*top_words_f)
+plt.figure(figsize=(10,5))
+sns.barplot(x=list(counts), y=list(words), palette='Reds_r')
+plt.title("Flipflop - Top Pain Points in Negative Reviews")
+plt.xlabel("Frequency")
+plt.ylabel("Issue / Word")
+plt.show()
+
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Goboult dataset
+X_g = goboult_sentiment['cleaned_review']
+y_g = goboult_sentiment['Sentiment']
+
+# Flipflop dataset
+X_f = flipflop_sentiment['cleaned_review']
+y_f = flipflop_sentiment['Sentiment']
+
+# TF-IDF vectorizers for each dataset
+tfidf_goboult = TfidfVectorizer(max_features=5000)
+X_g_tfidf = tfidf_goboult.fit_transform(X_g)
+
+# Save fitted vectorizer
+import pickle
+with open('tfidf_goboult.pkl', 'wb') as f:
+    pickle.dump(tfidf_goboult, f)
+
+tfidf_flipflop = TfidfVectorizer(max_features=5000)
+X_f_tfidf = tfidf_flipflop.fit_transform(X_f)
+
+# Save fitted vectorizer
+import pickle
+with open('tfidf_flipflop.pkl', 'wb') as f:
+    pickle.dump(tfidf_flipflop, f)
+
+# Goboult
+X_train_g, X_test_g, y_train_g, y_test_g = train_test_split(X_g_tfidf, y_g, test_size=0.3, random_state=42, stratify=y_g)
+
+# Flipflop
+X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(X_f_tfidf, y_f, test_size=0.3, random_state=42, stratify=y_f)
+
+# Goboult Random Forest
+rf_g = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_g.fit(X_g_tfidf, y_g)  # y_g = sentiment labels
+# Save fitted vectorizer and trained model
+pickle.dump(tfidf_goboult, open('tfidf_goboult.pkl', 'wb'))
+pickle.dump(rf_g, open('rf_goboult_model.pkl', 'wb'))
+
+# Flipflop Random Forest
+rf_f = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_f.fit(X_f_tfidf, y_f)
+# Save
+pickle.dump(tfidf_flipflop, open('tfidf_flipflop.pkl', 'wb'))
+pickle.dump(rf_f, open('rf_flipflop_model.pkl', 'wb'))
+
+# Goboult Predictions
+y_pred_g = rf_g.predict(X_test_g)
+print("Goboult Dataset Performance:")
+print("Accuracy:", accuracy_score(y_test_g, y_pred_g))
+print(classification_report(y_test_g, y_pred_g))
+
+# Confusion Matrix
+cm_g = confusion_matrix(y_test_g, y_pred_g)
+sns.heatmap(cm_g, annot=True, fmt='d', cmap='Blues', xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+plt.title("Goboult - Confusion Matrix")
+plt.show()
+
+# Flipflop Predictions
+y_pred_f = rf_f.predict(X_test_f)
+print("\nFlipflop Dataset Performance:")
+print("Accuracy:", accuracy_score(y_test_f, y_pred_f))
+print(classification_report(y_test_f, y_pred_f))
+
+cm_f = confusion_matrix(y_test_f, y_pred_f)
+sns.heatmap(cm_f, annot=True, fmt='d', cmap='Blues', xticklabels=['Negative','Positive'], yticklabels=['Negative','Positive'])
+plt.title("Flipflop - Confusion Matrix")
+plt.show()
+
+import pickle
+
+!pip install streamlit
+import streamlit as st
+import pickle
+import string
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import nltk
+
+# Download NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+# Load models and TF-IDF
+with open('rf_goboult_model.pkl', 'rb') as f:
+    goboult_model = pickle.load(f)
+with open('tfidf_goboult.pkl', 'rb') as f:
+    goboult_tfidf = pickle.load(f)
+
+with open('rf_flipflop_model.pkl', 'rb') as f:
+    flipflop_model = pickle.load(f)
+with open('tfidf_flipflop.pkl', 'rb') as f:
+    flipflop_tfidf = pickle.load(f)
+
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def preprocess_text(text):
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    tokens = word_tokenize(text)
+    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
+    return " ".join(tokens)
+
+# Streamlit UI
+st.title("Sentiment Analysis for Goboult & Flipflop")
+dataset = st.selectbox("Select Dataset", ["Goboult", "Flipflop"])
+review = st.text_area("Enter your review here:")
+
+if st.button("Predict Sentiment"):
+    if review.strip() == "":
+        st.warning("Please enter a review!")
+    else:
+        cleaned = preprocess_text(review)
+        if dataset.lower() == "goboult":
+            vectorized = goboult_tfidf.transform([cleaned])
+            pred = goboult_model.predict(vectorized)[0]
+        else:
+            vectorized = flipflop_tfidf.transform([cleaned])
+            pred = flipflop_model.predict(vectorized)[0]
+        st.success(f"Predicted Sentiment: {pred}")
+
+
+
+# Load fitted models and TF-IDF
+with open('rf_goboult_model.pkl', 'rb') as f:
+    goboult_model = pickle.load(f)
+with open('tfidf_goboult.pkl', 'rb') as f:
+    goboult_tfidf = pickle.load(f)
+
+with open('rf_flipflop_model.pkl', 'rb') as f:
+    flipflop_model = pickle.load(f)
+with open('tfidf_flipflop.pkl', 'rb') as f:
+    flipflop_tfidf = pickle.load(f)
+
+
+app_code = '''
+import streamlit as st
+import pickle
+import string
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import nltk
+
+# Download NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+# Load models and TF-IDF
+with open('rf_goboult_model.pkl', 'rb') as f:
+    goboult_model = pickle.load(f)
+with open('tfidf_goboult.pkl', 'rb') as f:
+    goboult_tfidf = pickle.load(f)
+
+with open('rf_flipflop_model.pkl', 'rb') as f:
+    flipflop_model = pickle.load(f)
+with open('tfidf_flipflop.pkl', 'rb') as f:
+    flipflop_tfidf = pickle.load(f)
+
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def preprocess_text(text):
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    tokens = word_tokenize(text)
+    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
+    return " ".join(tokens)
+
+# Streamlit UI
+st.title("Sentiment Analysis for Goboult & Flipflop")
+dataset = st.selectbox("Select Dataset", ["Goboult", "Flipflop"])
+review = st.text_area("Enter your review here:")
+
+if st.button("Predict Sentiment"):
+    if review.strip() == "":
+        st.warning("Please enter a review!")
+    else:
+        cleaned = preprocess_text(review)
+        if dataset.lower() == "goboult":
+            vectorized = goboult_tfidf.transform([cleaned])
+            pred = goboult_model.predict(vectorized)[0]
+        else:
+            vectorized = flipflop_tfidf.transform([cleaned])
+            pred = flipflop_model.predict(vectorized)[0]
+        st.success(f"Predicted Sentiment: {pred}")
+'''
+
+with open("/content/app.py", "w") as f:
+    f.write(app_code)
+
+print("app.py created successfully!")
+
+# Create requirements.txt in the current folder
+requirements_code = """streamlit
+nltk
+scikit-learn
+pandas
+matplotlib
+seaborn
+wordcloud
+"""
+
+with open("/content/requirements.txt", "w") as f:
+    f.write(requirements_code)
+
+print("requirements.txt created successfully!")
+
+
+import shutil
+
+# List all files to include
+files_to_include = [
+    '/content/app.py',
+    '/content/rf_goboult_model.pkl',
+    '/content/tfidf_goboult.pkl',
+    '/content/rf_flipflop_model.pkl',
+    '/content/tfidf_flipflop.pkl',
+    '/content/requirements.txt'
+]
+
+# Create a ZIP file
+shutil.make_archive('/content/sentiment_analysis_app', 'zip', root_dir='/content', base_dir='.')
+
+print("ZIP file created! Download it from:")
+print("/content/sentiment_analysis_app.zip")
+
+from google.colab import files
+files.download('/content/sentiment_analysis_app.zip')
+
+!rm -rf /root/.config/ngrok/ngrok.yml
+
+
+from pyngrok import ngrok
+
+# Set your ngrok authtoken
+ngrok.set_auth_token('replace wiyh your ngrok authtoken')
+print("ngrok authtoken set!")
+
+# Kill any process already using port 8501 to avoid conflicts
+!kill $(lsof -t -i:8501) || echo "No old process running on port 8501"
+
+# Run Streamlit in the background on port 8501
+get_ipython().system_raw("streamlit run app.py --server.port 8501 &")
+
+# Create a public URL for your Streamlit app
+public_url = ngrok.connect(8501)
+print("Open this URL in your browser:")
+print(public_url)

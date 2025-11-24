@@ -5,12 +5,23 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 import nltk
+from huggingface_hub import hf_hub_download
 
 # Download NLTK data
-nltk.download('punkt_tab')  # Changed from 'punkt'
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('omw-1.4')  # Added for better lemmatization
+try:
+    nltk.data.find('tokenizers/punkt_tab')
+except LookupError:
+    nltk.download('punkt_tab')
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
+
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet')
 
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
@@ -23,17 +34,25 @@ def preprocess_text(text):
     tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
     return " ".join(tokens)
 
-# --- Load models from local files in Space ---
+# --- Load models from Hugging Face Model Repo ---
 @st.cache_resource
 def load_models():
-    with open('rf_goboult_model.pkl', 'rb') as f:
+    HF_MODEL_REPO = "Redfire-1234/Sentiment-analysis"
+    
+    goboult_model_file = hf_hub_download(HF_MODEL_REPO, "rf_goboult_model.pkl")
+    goboult_tfidf_file = hf_hub_download(HF_MODEL_REPO, "tfidf_goboult.pkl")
+    flipflop_model_file = hf_hub_download(HF_MODEL_REPO, "rf_flipflop_model.pkl")
+    flipflop_tfidf_file = hf_hub_download(HF_MODEL_REPO, "tfidf_flipflop.pkl")
+    
+    with open(goboult_model_file, 'rb') as f:
         goboult_model = pickle.load(f)
-    with open('tfidf_goboult.pkl', 'rb') as f:
+    with open(goboult_tfidf_file, 'rb') as f:
         goboult_tfidf = pickle.load(f)
-    with open('rf_flipflop_model.pkl', 'rb') as f:
+    with open(flipflop_model_file, 'rb') as f:
         flipflop_model = pickle.load(f)
-    with open('tfidf_flipflop.pkl', 'rb') as f:
+    with open(flipflop_tfidf_file, 'rb') as f:
         flipflop_tfidf = pickle.load(f)
+    
     return goboult_model, goboult_tfidf, flipflop_model, flipflop_tfidf
 
 goboult_model, goboult_tfidf, flipflop_model, flipflop_tfidf = load_models()

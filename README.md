@@ -1,4 +1,8 @@
 # Sentiment Analysis for Goboult & Flipflop
+Live Demo  
+Try the app here -->  
+[Sentiment Analysis App](https://sentimentanalysisapp-7wweokfzhbvhvfwhwhqldh.streamlit.app/)  
+
 
 
 ## References:  

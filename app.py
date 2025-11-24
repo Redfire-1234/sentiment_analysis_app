@@ -5,12 +5,12 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 import nltk
-from huggingface_hub import hf_hub_download
 
 # Download NLTK data
-nltk.download('punkt')
+nltk.download('punkt_tab')  # Changed from 'punkt'
 nltk.download('stopwords')
 nltk.download('wordnet')
+nltk.download('omw-1.4')  # Added for better lemmatization
 
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
@@ -23,24 +23,20 @@ def preprocess_text(text):
     tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
     return " ".join(tokens)
 
-# --- Load models from Hugging Face Hub ---
-# Replace with your actual HF model repo
-HF_MODEL_REPO = "YourUsername/goboult-flipflop-sentiment-model"
+# --- Load models from local files in Space ---
+@st.cache_resource
+def load_models():
+    with open('rf_goboult_model.pkl', 'rb') as f:
+        goboult_model = pickle.load(f)
+    with open('tfidf_goboult.pkl', 'rb') as f:
+        goboult_tfidf = pickle.load(f)
+    with open('rf_flipflop_model.pkl', 'rb') as f:
+        flipflop_model = pickle.load(f)
+    with open('tfidf_flipflop.pkl', 'rb') as f:
+        flipflop_tfidf = pickle.load(f)
+    return goboult_model, goboult_tfidf, flipflop_model, flipflop_tfidf
 
-goboult_model_file = hf_hub_download(HF_MODEL_REPO, "rf_goboult_model.pkl")
-goboult_tfidf_file = hf_hub_download(HF_MODEL_REPO, "tfidf_goboult.pkl")
-flipflop_model_file = hf_hub_download(HF_MODEL_REPO, "rf_flipflop_model.pkl")
-flipflop_tfidf_file = hf_hub_download(HF_MODEL_REPO, "tfidf_flipflop.pkl")
-
-with open(goboult_model_file, 'rb') as f:
-    goboult_model = pickle.load(f)
-with open(goboult_tfidf_file, 'rb') as f:
-    goboult_tfidf = pickle.load(f)
-
-with open(flipflop_model_file, 'rb') as f:
-    flipflop_model = pickle.load(f)
-with open(flipflop_tfidf_file, 'rb') as f:
-    flipflop_tfidf = pickle.load(f)
+goboult_model, goboult_tfidf, flipflop_model, flipflop_tfidf = load_models()
 
 # --- Streamlit UI ---
 st.title("Sentiment Analysis for Goboult & Flipflop")
@@ -53,12 +49,14 @@ if st.button("Predict Sentiment"):
         st.warning("Please enter a review!")
     else:
         cleaned = preprocess_text(review)
+        
         if dataset.lower() == "goboult":
             vectorized = goboult_tfidf.transform([cleaned])
             pred = goboult_model.predict(vectorized)[0]
         else:
             vectorized = flipflop_tfidf.transform([cleaned])
             pred = flipflop_model.predict(vectorized)[0]
+        
         st.success(f"Predicted Sentiment: {pred}")
 
 
